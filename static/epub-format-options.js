@@ -3,12 +3,34 @@ const OPTION_IDS = Object.freeze({
   convertPunctuation: "taiwan-punctuation-switch",
 });
 
-const DEFAULT_ENABLED_EXISTING_OPTIONS = Object.freeze([
-  "auto-download-switch",
-  "jieba-switch",
-]);
-
 let batchOptions = null;
+
+function installVueDefaults() {
+  const vue = globalThis.Vue;
+  if (!vue?.createApp || vue.createApp.__epubDefaultOptionsInstalled) return;
+
+  const originalCreateApp = vue.createApp;
+  function createAppWithDefaults(rootComponent, ...args) {
+    let component = rootComponent;
+    if (component && typeof component === "object" && typeof component.data === "function") {
+      const originalData = component.data;
+      component = {
+        ...component,
+        data(...dataArgs) {
+          return {
+            ...originalData.apply(this, dataArgs),
+            useJieba: true,
+            autoDownload: true,
+          };
+        },
+      };
+    }
+    return originalCreateApp.call(this, component, ...args);
+  }
+
+  createAppWithDefaults.__epubDefaultOptionsInstalled = true;
+  vue.createApp = createAppWithDefaults;
+}
 
 function currentOptions() {
   return {
@@ -31,13 +53,6 @@ function installWorkerOptionBridge() {
       ? originalPostMessage.call(this, nextMessage)
       : originalPostMessage.call(this, nextMessage, transfer);
   };
-}
-
-function enableCheckboxByDefault(id) {
-  const input = document.getElementById(id);
-  if (!input || input.checked || input.disabled) return;
-  input.checked = true;
-  input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 function createHelpIcon(help) {
@@ -65,7 +80,9 @@ function createSwitch(id, label, help) {
   const input = document.createElement("input");
   input.type = "checkbox";
   input.id = id;
+  input.defaultChecked = true;
   input.checked = true;
+  input.setAttribute("checked", "");
   input.setAttribute("aria-description", help);
   switchLabel.append(input, document.createTextNode(` ${label}`));
 
@@ -90,7 +107,6 @@ function installControls() {
   );
 
   grid.append(vertical.wrapper, punctuation.wrapper);
-  DEFAULT_ENABLED_EXISTING_OPTIONS.forEach(enableCheckboxByDefault);
 
   const controls = [vertical.input, punctuation.input];
   const dropzone = document.getElementById("dropzone");
@@ -113,6 +129,7 @@ function installControls() {
   syncDisabled();
 }
 
+installVueDefaults();
 installWorkerOptionBridge();
 
 if (document.readyState === "loading") {
