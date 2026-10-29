@@ -6,8 +6,11 @@ import OpenCC from "opencc-wasm";
 import {
     EpubConversionError,
     convertOpenCcText,
+    convertTaiwanPunctuation,
     isAcceptedEpubMimetype,
+    updateVerticalWriting,
 } from "../static/epub-converter.js";
+import { outputLanguage } from "../static/opencc-config.js";
 
 const utf8Encoder = new TextEncoder();
 
@@ -16,6 +19,47 @@ test("EPUB mimetype validation tolerates whitespace and ASCII case", () => {
     assert.equal(isAcceptedEpubMimetype("\uFEFF  Application/EPUB+ZIP\r\n"), true);
     assert.equal(isAcceptedEpubMimetype("application/zip"), false);
     assert.equal(isAcceptedEpubMimetype(""), false);
+});
+
+test("Taiwan OpenCC modes use zh-tw package language", () => {
+    assert.equal(outputLanguage("s2tw"), "zh-tw");
+    assert.equal(outputLanguage("s2twp"), "zh-tw");
+    assert.equal(outputLanguage("s2twp_jieba"), "zh-tw");
+    assert.equal(outputLanguage("t2tw"), "zh-tw");
+});
+
+test("Taiwan punctuation conversion replaces curly quotation marks", () => {
+    assert.equal(
+        convertTaiwanPunctuation("“外層 ‘內層’ 外層”"),
+        "「外層 『內層』 外層」",
+    );
+});
+
+test("vertical writing metadata is added while existing spine attributes are preserved", () => {
+    const input = `<?xml version="1.0"?>
+<package>
+  <metadata><dc:title>書名</dc:title></metadata>
+  <spine toc="ncx"><itemref idref="chapter1" /></spine>
+</package>`;
+    const output = updateVerticalWriting(input);
+
+    assert.match(output, /<meta name="primary-writing-mode" content="vertical-rl" \/>/u);
+    assert.match(output, /<spine\s+page-progression-direction="rtl"\s+toc="ncx">/u);
+    assert.match(output, /<itemref idref="chapter1" \/>/u);
+});
+
+test("vertical writing metadata updates existing values without duplicates", () => {
+    const input = `<package>
+<metadata><meta name="primary-writing-mode" content="horizontal-tb" /></metadata>
+<spine toc="ncx" page-progression-direction="ltr"></spine>
+</package>`;
+    const output = updateVerticalWriting(input);
+
+    assert.equal((output.match(/primary-writing-mode/gu) || []).length, 1);
+    assert.match(output, /content="vertical-rl"/u);
+    assert.equal((output.match(/page-progression-direction/gu) || []).length, 1);
+    assert.match(output, /page-progression-direction="rtl"/u);
+    assert.match(output, /toc="ncx"/u);
 });
 
 test("large OpenCC input is converted in safe UTF-8 chunks", async () => {
