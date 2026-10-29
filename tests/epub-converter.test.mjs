@@ -8,6 +8,7 @@ import {
     convertOpenCcText,
     convertTaiwanPunctuation,
     isAcceptedEpubMimetype,
+    updateVerticalCss,
     updateVerticalWriting,
 } from "../static/epub-converter.js";
 import { outputLanguage } from "../static/opencc-config.js";
@@ -33,6 +34,12 @@ test("Taiwan punctuation conversion replaces curly quotation marks", () => {
         convertTaiwanPunctuation("“外層 ‘內層’ 外層”"),
         "「外層 『內層』 外層」",
     );
+});
+
+test("vertical writing CSS adds prefixed and standard writing modes to body", () => {
+    const output = updateVerticalCss("p { margin: 0; }\n");
+    assert.match(output, /body\s*\{[\s\S]*-webkit-writing-mode:\s*vertical-rl;/u);
+    assert.match(output, /body\s*\{[\s\S]*writing-mode:\s*vertical-rl;/u);
 });
 
 test("vertical writing metadata is added while existing spine attributes are preserved", () => {
