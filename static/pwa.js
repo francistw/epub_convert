@@ -1,3 +1,5 @@
+import "./epub-format-options.js";
+
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || !globalThis.isSecureContext) return;
 
