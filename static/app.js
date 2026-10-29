@@ -174,7 +174,7 @@ createApp({
       useWordConversion: true,
       useJieba: true,
       autoDownload: true,
-      fastMode: false,
+      fastMode: true,
       customDictionaryEnabled: false,
       customDictionaryName: "",
       customDictionaryEntryCount: 0,
