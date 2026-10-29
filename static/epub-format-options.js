@@ -3,6 +3,11 @@ const OPTION_IDS = Object.freeze({
   convertPunctuation: "taiwan-punctuation-switch",
 });
 
+const DEFAULT_ENABLED_EXISTING_OPTIONS = Object.freeze([
+  "auto-download-switch",
+  "jieba-switch",
+]);
+
 let batchOptions = null;
 
 function currentOptions() {
@@ -26,6 +31,13 @@ function installWorkerOptionBridge() {
       ? originalPostMessage.call(this, nextMessage)
       : originalPostMessage.call(this, nextMessage, transfer);
   };
+}
+
+function enableCheckboxByDefault(id) {
+  const input = document.getElementById(id);
+  if (!input || input.checked || input.disabled) return;
+  input.checked = true;
+  input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 function createHelpIcon(help) {
@@ -53,6 +65,7 @@ function createSwitch(id, label, help) {
   const input = document.createElement("input");
   input.type = "checkbox";
   input.id = id;
+  input.checked = true;
   input.setAttribute("aria-description", help);
   switchLabel.append(input, document.createTextNode(` ${label}`));
 
@@ -77,6 +90,7 @@ function installControls() {
   );
 
   grid.append(vertical.wrapper, punctuation.wrapper);
+  DEFAULT_ENABLED_EXISTING_OPTIONS.forEach(enableCheckboxByDefault);
 
   const controls = [vertical.input, punctuation.input];
   const dropzone = document.getElementById("dropzone");
