@@ -3,6 +3,11 @@ const OPTION_IDS = Object.freeze({
   convertPunctuation: "taiwan-punctuation-switch",
 });
 
+const SUMMARY_IDS = Object.freeze({
+  verticalWriting: "vertical-writing-summary-chip",
+  convertPunctuation: "taiwan-punctuation-summary-chip",
+});
+
 let batchOptions = null;
 
 function currentOptions() {
@@ -64,6 +69,33 @@ function createSwitch(id, label, help) {
   return { wrapper, input };
 }
 
+function setSummaryChip(id, label, enabled) {
+  const summary = document.querySelector("#settings-details > summary");
+  if (!summary) return;
+
+  let chip = document.getElementById(id);
+  if (!enabled) {
+    chip?.remove();
+    return;
+  }
+  if (chip) return;
+
+  chip = document.createElement("span");
+  chip.id = id;
+  chip.className = "ts-chip is-small is-start-spaced";
+  chip.textContent = label;
+
+  const summarySwitches = summary.querySelector(".summary-switches");
+  if (summarySwitches) summary.insertBefore(chip, summarySwitches);
+  else summary.append(chip);
+}
+
+function syncSummaryChips() {
+  const options = currentOptions();
+  setSummaryChip(SUMMARY_IDS.verticalWriting, "直排", options.verticalWriting);
+  setSummaryChip(SUMMARY_IDS.convertPunctuation, "引號轉換", options.convertPunctuation);
+}
+
 function installControls() {
   const grid = document.querySelector("#settings-details .ts-fieldset .ts-grid");
   if (!grid || document.getElementById(OPTION_IDS.verticalWriting)) return;
@@ -82,6 +114,9 @@ function installControls() {
   grid.append(vertical.wrapper, punctuation.wrapper);
 
   const controls = [vertical.input, punctuation.input];
+  controls.forEach((control) => control.addEventListener("change", syncSummaryChips));
+  syncSummaryChips();
+
   const dropzone = document.getElementById("dropzone");
   const syncDisabled = () => {
     const converting = dropzone?.dataset.state === "converting";
