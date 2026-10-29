@@ -67,6 +67,8 @@ parentPort.on("message", async (message) => {
       filename: path.basename(inputPath),
       config: workerData.config,
       converter,
+      verticalWriting: Boolean(workerData.epubOptions?.verticalWriting),
+      convertPunctuation: Boolean(workerData.epubOptions?.convertPunctuation),
       onProgress,
     });
     await mkdir(outputDirectory, { recursive: true });
