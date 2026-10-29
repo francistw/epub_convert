@@ -198,8 +198,7 @@ function setXmlAttribute(attributes, name, value) {
   if (pattern.test(attributes)) {
     return attributes.replace(pattern, `${name}="${value}"`);
   }
-  const spacing = attributes && !/^\s/u.test(attributes) ? " " : "";
-  return `${spacing}${name}="${value}"${attributes}`;
+  return ` ${name}="${value}"${attributes}`;
 }
 
 export function updateVerticalWriting(content) {
