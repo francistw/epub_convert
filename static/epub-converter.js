@@ -71,6 +71,11 @@ function isConvertibleFile(entry) {
   );
 }
 
+function isProcessableFile(entry, verticalWriting) {
+  return isConvertibleFile(entry)
+    || (verticalWriting && !entry.directory && extensionOf(entry.filename) === "css");
+}
+
 function assertSafeOutputPath(filename) {
   const parts = filename.split("/");
   if (
@@ -191,6 +196,16 @@ export function convertTaiwanPunctuation(content) {
     .replaceAll("”", "」")
     .replaceAll("‘", "『")
     .replaceAll("’", "』");
+}
+
+export function updateVerticalCss(content) {
+  const rule = [
+    "body {",
+    "  -webkit-writing-mode: vertical-rl;",
+    "  writing-mode: vertical-rl;",
+    "}",
+  ].join("\n");
+  return `${content.replace(/\s*$/u, "")}\n\n${rule}\n`;
 }
 
 function setXmlAttribute(attributes, name, value) {
@@ -336,11 +351,14 @@ export async function convertEpub({
     const outputEntries = [];
     const outputNames = new Set();
     const workEntries = entries.filter((entry) => entry.filename !== "mimetype");
-    const conversionTotal = workEntries.filter(isConvertibleFile).length;
+    const conversionTotal = workEntries.filter((entry) => isProcessableFile(entry, verticalWriting)).length;
     let conversionCurrent = 0;
 
     for (const entry of workEntries) {
       const convertible = isConvertibleFile(entry);
+      const extension = extensionOf(entry.filename);
+      const processCss = verticalWriting && extension === "css";
+      const processText = convertible || processCss;
 
       const convertedName = await convertOpenCcText(converter, entry.filename, entry.filename, "path");
       assertSafeOutputPath(convertedName);
@@ -355,11 +373,12 @@ export async function convertEpub({
       }
 
       let entryBytes = await readEntryBytes(entry);
-      if (convertible) {
+      if (processText) {
         report(onProgress, "converting", conversionCurrent, conversionTotal, "epub.progress.processing", { filename: entry.filename });
         const decoded = decodeUtf8(entryBytes, entry.filename);
-        const extension = extensionOf(entry.filename);
-        let convertedText = await convertOpenCcText(converter, decoded.text, entry.filename);
+        let convertedText = convertible
+          ? await convertOpenCcText(converter, decoded.text, entry.filename)
+          : decoded.text;
         if (convertPunctuation && PUNCTUATION_EXTENSIONS.has(extension)) {
           convertedText = convertTaiwanPunctuation(convertedText);
         }
@@ -367,6 +386,7 @@ export async function convertEpub({
           convertedText = updatePackageLanguage(convertedText, config);
           if (verticalWriting) convertedText = updateVerticalWriting(convertedText);
         }
+        if (processCss) convertedText = updateVerticalCss(convertedText);
         entryBytes = encodeUtf8(convertedText, decoded.hasBom);
         conversionCurrent += 1;
       }
