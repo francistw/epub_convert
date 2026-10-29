@@ -10,6 +10,7 @@ let zipPromise = null;
 
 const EPUB_MIMETYPE = "application/epub+zip";
 const CONVERTIBLE_EXTENSIONS = new Set(["htm", "html", "xhtml", "ncx", "opf"]);
+const PUNCTUATION_EXTENSIONS = new Set(["htm", "html", "xhtml", "ncx", "opf"]);
 const OPENCC_CHUNK_BYTES = 16 * 1024;
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 const utf8Encoder = new TextEncoder();
@@ -184,6 +185,49 @@ export async function convertOpenCcText(converter, text, entryName, kind = "cont
   return output.join("");
 }
 
+export function convertTaiwanPunctuation(content) {
+  return content
+    .replaceAll("“", "「")
+    .replaceAll("”", "」")
+    .replaceAll("‘", "『")
+    .replaceAll("’", "』");
+}
+
+function setXmlAttribute(attributes, name, value) {
+  const pattern = new RegExp(`\\b${name}\\s*=\\s*(["'])[^"']*\\1`, "i");
+  if (pattern.test(attributes)) {
+    return attributes.replace(pattern, `${name}="${value}"`);
+  }
+  const spacing = attributes && !/^\s/u.test(attributes) ? " " : "";
+  return `${spacing}${name}="${value}"${attributes}`;
+}
+
+export function updateVerticalWriting(content) {
+  let result = content;
+  const primaryWritingMode = /<meta\b[^>]*\bname\s*=\s*(["'])primary-writing-mode\1[^>]*\/?>/i;
+
+  if (primaryWritingMode.test(result)) {
+    result = result.replace(primaryWritingMode, (tag) => {
+      const selfClosing = /\/\s*>$/u.test(tag);
+      const inner = tag.replace(/^<meta\b/i, "").replace(/\/?>$/u, "");
+      const attributes = setXmlAttribute(inner, "content", "vertical-rl");
+      return `<meta${attributes}${selfClosing ? " /" : ""}>`;
+    });
+  } else {
+    result = result.replace(
+      /<\/metadata\s*>/i,
+      '  <meta name="primary-writing-mode" content="vertical-rl" />\n</metadata>',
+    );
+  }
+
+  result = result.replace(/<spine\b([^>]*)>/i, (tag, attributes) => {
+    const updated = setXmlAttribute(attributes, "page-progression-direction", "rtl");
+    return `<spine${updated}>`;
+  });
+
+  return result;
+}
+
 function updatePackageLanguage(content, config) {
   const language = outputLanguage(config);
   if (!language) return content;
@@ -227,7 +271,15 @@ async function readEntryBytes(entry) {
   }
 }
 
-export async function convertEpub({ bytes, filename, config, converter, onProgress }) {
+export async function convertEpub({
+  bytes,
+  filename,
+  config,
+  converter,
+  verticalWriting = false,
+  convertPunctuation = false,
+  onProgress,
+}) {
   await loadZip();
   if (!(bytes instanceof ArrayBuffer || bytes instanceof Uint8Array)) {
     const error = new TypeError("epub.error.invalidBytes");
@@ -307,9 +359,14 @@ export async function convertEpub({ bytes, filename, config, converter, onProgre
       if (convertible) {
         report(onProgress, "converting", conversionCurrent, conversionTotal, "epub.progress.processing", { filename: entry.filename });
         const decoded = decodeUtf8(entryBytes, entry.filename);
+        const extension = extensionOf(entry.filename);
         let convertedText = await convertOpenCcText(converter, decoded.text, entry.filename);
-        if (extensionOf(entry.filename) === "opf") {
+        if (convertPunctuation && PUNCTUATION_EXTENSIONS.has(extension)) {
+          convertedText = convertTaiwanPunctuation(convertedText);
+        }
+        if (extension === "opf") {
           convertedText = updatePackageLanguage(convertedText, config);
+          if (verticalWriting) convertedText = updateVerticalWriting(convertedText);
         }
         entryBytes = encodeUtf8(convertedText, decoded.hasBom);
         conversionCurrent += 1;
