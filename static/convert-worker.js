@@ -32,7 +32,13 @@ function serializeStartupError(error) {
 self.addEventListener("message", async (event) => {
   if (event.data?.type !== "convert") return;
 
-  const { bytes, filename, config, customDictionary } = event.data;
+  const {
+    bytes,
+    filename,
+    config,
+    customDictionary,
+    epubOptions = {},
+  } = event.data;
   let progressContext = {
     phase: "initializing",
     percent: 0,
@@ -61,6 +67,7 @@ self.addEventListener("message", async (event) => {
       filename,
       config,
       converter,
+      ...epubOptions,
       onProgress: sendProgress,
     });
     const outputBuffer = result.bytes.buffer.slice(
