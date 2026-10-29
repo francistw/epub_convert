@@ -26,6 +26,9 @@ Convert EPUB files with OpenCC and process multiple books in parallel.
 Options:
   -m, --mode <mode>       OpenCC mode (default: s2tw)
       --jieba             Use the Jieba variant when supported by the mode
+      --vertical          Set EPUB writing mode to vertical-rl and spine direction to rtl
+      --taiwan-punctuation
+                          Convert “ ” to 「 」 and ‘ ’ to 『 』
   -j, --jobs <count>      Parallel workers (automatic: up to 4; maximum: ${MAX_JOBS})
   -o, --output-dir <dir>  Put all converted books in this directory
   -d, --dictionary <file> Apply a text dictionary or browser-exported JSON library
@@ -54,6 +57,8 @@ export function parseCliArgs(args) {
       options: {
         mode: { type: "string", short: "m", default: "s2tw" },
         jieba: { type: "boolean", default: false },
+        vertical: { type: "boolean", default: false },
+        "taiwan-punctuation": { type: "boolean", default: false },
         jobs: { type: "string", short: "j" },
         "output-dir": { type: "string", short: "o" },
         output: { type: "string" },
@@ -73,6 +78,8 @@ export function parseCliArgs(args) {
   const options = {
     mode: parsed.values.mode,
     jieba: parsed.values.jieba,
+    verticalWriting: parsed.values.vertical,
+    convertPunctuation: parsed.values["taiwan-punctuation"],
     jobs,
     outputDirectory: parsed.values["output-dir"] ?? parsed.values.output ?? null,
     dictionaryFiles: parsed.values.dictionary,
@@ -179,6 +186,7 @@ export async function runConversionPool({
   outputDirectory,
   overwrite,
   customDictionary = null,
+  epubOptions = {},
   onProgress,
 }) {
   const results = new Array(files.length);
@@ -186,7 +194,9 @@ export async function runConversionPool({
   let nextIndex = 0;
 
   async function runWorkerSlot(slot) {
-    const worker = new Worker(workerUrl, { workerData: { config, customDictionary } });
+    const worker = new Worker(workerUrl, {
+      workerData: { config, customDictionary, epubOptions },
+    });
     workers.add(worker);
     let activeIndex = null;
     let shuttingDown = false;
@@ -297,7 +307,14 @@ async function main() {
   const dictionarySummary = customDictionary
     ? `, ${customDictionary.entries.length} custom dictionary entries`
     : "";
-  console.log(`Converting ${files.length} EPUB file(s) with ${jobs} worker(s), mode ${config}${dictionarySummary}.`);
+  const formattingSummary = [
+    options.verticalWriting ? "vertical" : null,
+    options.convertPunctuation ? "Taiwan punctuation" : null,
+  ].filter(Boolean);
+  const formattingSuffix = formattingSummary.length
+    ? `, ${formattingSummary.join(", ")}`
+    : "";
+  console.log(`Converting ${files.length} EPUB file(s) with ${jobs} worker(s), mode ${config}${dictionarySummary}${formattingSuffix}.`);
   const progress = CliProgress.create(files, jobs);
   progress.start();
   let results;
@@ -309,6 +326,10 @@ async function main() {
       outputDirectory,
       overwrite: options.overwrite,
       customDictionary,
+      epubOptions: {
+        verticalWriting: options.verticalWriting,
+        convertPunctuation: options.convertPunctuation,
+      },
       onProgress: (message) => progress.update(message),
     });
   } finally {
