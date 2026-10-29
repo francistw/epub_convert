@@ -28,6 +28,17 @@ function installWorkerOptionBridge() {
   };
 }
 
+function createHelpIcon(help) {
+  const icon = document.createElement("span");
+  icon.className = "ts-icon is-circle-question-icon";
+  icon.tabIndex = 0;
+  icon.setAttribute("role", "button");
+  icon.setAttribute("aria-label", help);
+  icon.setAttribute("data-tooltip", help);
+  icon.setAttribute("data-trigger", "hover focus");
+  return icon;
+}
+
 function createSwitch(id, label, help) {
   const wrapper = document.createElement("div");
   wrapper.className = "column is-4-wide epub-format-option";
@@ -38,18 +49,14 @@ function createSwitch(id, label, help) {
   const switchLabel = document.createElement("label");
   switchLabel.className = "ts-switch";
   switchLabel.tabIndex = 0;
-  switchLabel.title = help;
 
   const input = document.createElement("input");
   input.type = "checkbox";
   input.id = id;
+  input.setAttribute("aria-description", help);
   switchLabel.append(input, document.createTextNode(` ${label}`));
 
-  const description = document.createElement("span");
-  description.className = "ts-text is-description has-start-spaced-small";
-  description.textContent = help;
-
-  row.append(switchLabel, description);
+  row.append(switchLabel, createHelpIcon(help));
   wrapper.append(row);
   return { wrapper, input };
 }
@@ -61,7 +68,7 @@ function installControls() {
   const vertical = createSwitch(
     OPTION_IDS.verticalWriting,
     "轉換為直排",
-    "在 OPF 加入 vertical-rl，並將 spine 翻頁方向設為 rtl。",
+    "在 OPF 加入 vertical-rl，將 spine 翻頁方向設為 rtl，並在 EPUB 樣式中套用直排 writing-mode。",
   );
   const punctuation = createSwitch(
     OPTION_IDS.convertPunctuation,
