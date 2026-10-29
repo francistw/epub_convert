@@ -5,33 +5,6 @@ const OPTION_IDS = Object.freeze({
 
 let batchOptions = null;
 
-function installVueDefaults() {
-  const vue = globalThis.Vue;
-  if (!vue?.createApp || vue.createApp.__epubDefaultOptionsInstalled) return;
-
-  const originalCreateApp = vue.createApp;
-  function createAppWithDefaults(rootComponent, ...args) {
-    let component = rootComponent;
-    if (component && typeof component === "object" && typeof component.data === "function") {
-      const originalData = component.data;
-      component = {
-        ...component,
-        data(...dataArgs) {
-          return {
-            ...originalData.apply(this, dataArgs),
-            useJieba: true,
-            autoDownload: true,
-          };
-        },
-      };
-    }
-    return originalCreateApp.call(this, component, ...args);
-  }
-
-  createAppWithDefaults.__epubDefaultOptionsInstalled = true;
-  vue.createApp = createAppWithDefaults;
-}
-
 function currentOptions() {
   return {
     verticalWriting: Boolean(document.getElementById(OPTION_IDS.verticalWriting)?.checked),
@@ -129,7 +102,6 @@ function installControls() {
   syncDisabled();
 }
 
-installVueDefaults();
 installWorkerOptionBridge();
 
 if (document.readyState === "loading") {
