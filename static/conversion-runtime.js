@@ -2,6 +2,17 @@ const baseConverters = new Map();
 const customConverters = new Map();
 let openCcModulePromise = null;
 
+function customDictionaryToken(index) {
+  const high = Math.floor(index / 100);
+  const low = index % 100;
+  return String.fromCharCode(
+    0xE000,
+    0xE100 + high,
+    0xE200 + low,
+    0xE001,
+  );
+}
+
 export async function getConverter(
   config,
   customDictionary,
@@ -44,9 +55,25 @@ export async function getConverter(
       messageKey: "worker.progress.loadingCustomDictionary",
       messageParameters: {},
     });
-    const customConverter = OpenCC.CustomConverter(customDictionary.entries);
+
+    const sourceToToken = customDictionary.entries.map(([source], index) => [
+      source,
+      customDictionaryToken(index),
+    ]);
+    const tokenToTarget = customDictionary.entries.map(([, target], index) => [
+      customDictionaryToken(index),
+      target,
+    ]);
+
+    const protectConverter = OpenCC.CustomConverter(sourceToToken);
+    const restoreConverter = OpenCC.CustomConverter(tokenToTarget);
+
     if (customConverters.size >= 20) customConverters.clear();
-    customConverters.set(key, async (text) => baseConverter(await customConverter(text)));
+    customConverters.set(key, async (text) => {
+      const protectedText = protectConverter(text);
+      const convertedText = await baseConverter(protectedText);
+      return restoreConverter(convertedText);
+    });
   }
   return customConverters.get(key);
 }
