@@ -44,6 +44,24 @@ test("custom dictionary source entries match text before OpenCC conversion", asy
   assert.equal(await converter("文学少女"), "這很文學少女");
 });
 
+test("custom dictionary identity mapping can preserve simplified characters", async () => {
+  const converter = await getConverter("s2tw", {
+    id: "identity-preserve-test",
+    entries: [["发", "发"]],
+  }, () => import("opencc-wasm"));
+
+  assert.equal(await converter("发"), "发");
+});
+
+test("custom dictionary target is restored after OpenCC conversion", async () => {
+  const converter = await getConverter("s2twp", {
+    id: "restore-after-opencc-test",
+    entries: [["软件", "軟件"]],
+  }, () => import("opencc-wasm"));
+
+  assert.equal(await converter("软件"), "軟件");
+});
+
 test("conversion runtime requires an explicit OpenCC module loader", async () => {
   await assert.rejects(
     getConverter("s2t", null),
