@@ -8,6 +8,7 @@ import {
     convertOpenCcText,
     convertTaiwanPunctuation,
     isAcceptedEpubMimetype,
+    updateHtmlLanguage,
     updateVerticalCss,
     updateVerticalWriting,
 } from "../static/epub-converter.js";
@@ -27,6 +28,29 @@ test("Taiwan OpenCC modes use zh-tw package language", () => {
     assert.equal(outputLanguage("s2twp"), "zh-tw");
     assert.equal(outputLanguage("s2twp_jieba"), "zh-tw");
     assert.equal(outputLanguage("t2tw"), "zh-tw");
+});
+
+test("Taiwan HTML roots use zh-TW language attributes", () => {
+    const inputs = [
+        '<html xmlns="http://www.w3.org/1999/xhtml">',
+        '<html lang="zh-CN" class="book">',
+        '<html xml:lang="zh-Hans" xmlns="http://www.w3.org/1999/xhtml">',
+        '<html xml:lang="zh-CN" lang="zh-CN">',
+    ];
+
+    for (const input of inputs) {
+        const output = updateHtmlLanguage(`${input}<head></head></html>`, "s2twp");
+        const opening = output.match(/<html\b[^>]*>/u)?.[0] || "";
+        assert.match(opening, /xml:lang="zh-TW"/u);
+        assert.match(opening, /(?:^|\s)lang="zh-TW"/u);
+        assert.equal((opening.match(/xml:lang=/gu) || []).length, 1);
+        assert.equal((opening.match(/(?:^|\s)lang=/gu) || []).length, 1);
+    }
+
+    assert.equal(
+        updateHtmlLanguage('<html lang="zh-CN"></html>', "s2hk"),
+        '<html lang="zh-CN"></html>',
+    );
 });
 
 test("Taiwan punctuation conversion replaces curly quotation marks", () => {
