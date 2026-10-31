@@ -10,6 +10,7 @@ let zipPromise = null;
 
 const EPUB_MIMETYPE = "application/epub+zip";
 const CONVERTIBLE_EXTENSIONS = new Set(["htm", "html", "xhtml", "ncx", "opf"]);
+const HTML_EXTENSIONS = new Set(["htm", "html", "xhtml"]);
 const PUNCTUATION_EXTENSIONS = new Set(["htm", "html", "xhtml", "ncx", "opf"]);
 const OPENCC_CHUNK_BYTES = 16 * 1024;
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
@@ -209,11 +210,22 @@ export function updateVerticalCss(content) {
 }
 
 function setXmlAttribute(attributes, name, value) {
-  const pattern = new RegExp(`\\b${name}\\s*=\\s*(["'])[^"']*\\1`, "i");
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`(^|\\s)${escapedName}\\s*=\\s*(["'])[^"']*\\2`, "i");
   if (pattern.test(attributes)) {
-    return attributes.replace(pattern, `${name}="${value}"`);
+    return attributes.replace(pattern, (match, prefix) => `${prefix}${name}="${value}"`);
   }
   return ` ${name}="${value}"${attributes}`;
+}
+
+export function updateHtmlLanguage(content, config) {
+  if (outputLanguage(config)?.toLowerCase() !== "zh-tw") return content;
+
+  return content.replace(/<html\b([^>]*)>/i, (tag, attributes) => {
+    let updated = setXmlAttribute(attributes, "lang", "zh-TW");
+    updated = setXmlAttribute(updated, "xml:lang", "zh-TW");
+    return `<html${updated}>`;
+  });
 }
 
 export function updateVerticalWriting(content) {
@@ -381,6 +393,9 @@ export async function convertEpub({
           : decoded.text;
         if (convertPunctuation && PUNCTUATION_EXTENSIONS.has(extension)) {
           convertedText = convertTaiwanPunctuation(convertedText);
+        }
+        if (HTML_EXTENSIONS.has(extension)) {
+          convertedText = updateHtmlLanguage(convertedText, config);
         }
         if (extension === "opf") {
           convertedText = updatePackageLanguage(convertedText, config);
