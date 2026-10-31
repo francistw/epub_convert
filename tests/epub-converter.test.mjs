@@ -23,11 +23,11 @@ test("EPUB mimetype validation tolerates whitespace and ASCII case", () => {
     assert.equal(isAcceptedEpubMimetype(""), false);
 });
 
-test("Taiwan OpenCC modes use zh-tw package language", () => {
-    assert.equal(outputLanguage("s2tw"), "zh-tw");
-    assert.equal(outputLanguage("s2twp"), "zh-tw");
-    assert.equal(outputLanguage("s2twp_jieba"), "zh-tw");
-    assert.equal(outputLanguage("t2tw"), "zh-tw");
+test("Taiwan OpenCC modes use zh-TW package language", () => {
+    assert.equal(outputLanguage("s2tw"), "zh-TW");
+    assert.equal(outputLanguage("s2twp"), "zh-TW");
+    assert.equal(outputLanguage("s2twp_jieba"), "zh-TW");
+    assert.equal(outputLanguage("t2tw"), "zh-TW");
 });
 
 test("Taiwan HTML roots use zh-TW language attributes", () => {
