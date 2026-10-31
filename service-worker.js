@@ -121,7 +121,7 @@ self.addEventListener("fetch", (event) => {
 
   if (url.origin === self.location.origin) {
     const basePath = new URL("./", self.location.href).pathname;
-    const relativePath = url.pathname.startsWith(basePath.length)
+    const relativePath = url.pathname.startsWith(basePath)
       ? url.pathname.slice(basePath.length)
       : url.pathname;
     const immutableRuntime = relativePath.startsWith("vendor/");
