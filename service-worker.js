@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "epub-convert";
-const CACHE_VERSION = "v32";
+const CACHE_VERSION = "v33";
 const SHELL_CACHE = `${CACHE_PREFIX}-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-runtime-${CACHE_VERSION}`;
 
@@ -121,7 +121,7 @@ self.addEventListener("fetch", (event) => {
 
   if (url.origin === self.location.origin) {
     const basePath = new URL("./", self.location.href).pathname;
-    const relativePath = url.pathname.startsWith(basePath)
+    const relativePath = url.pathname.startsWith(basePath.length)
       ? url.pathname.slice(basePath.length)
       : url.pathname;
     const immutableRuntime = relativePath.startsWith("vendor/");
